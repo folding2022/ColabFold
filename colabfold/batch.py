@@ -1316,6 +1316,8 @@ def run(
         )
 
         try:
+            if msa_only and result_dir.joinpath(jobname + ".a3m").exists():
+                continue
             if a3m_lines is not None:
                 (
                     unpaired_msa,
