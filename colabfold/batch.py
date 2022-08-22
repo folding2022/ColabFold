@@ -1273,22 +1273,22 @@ def run(
     )
 
     save_representations = save_single_representations or save_pair_representations
-
-    model_runner_and_params = load_models_and_params(
-        num_models,
-        use_templates,
-        num_recycles,
-        num_ensemble,
-        model_order,
-        model_extension,
-        data_dir,
-        recompile_all_models,
-        stop_at_score=stop_at_score,
-        rank_by=rank_by,
-        return_representations=save_representations,
-        training=training,
-        max_msa=max_msa,
-    )
+    if not msa_only:
+        model_runner_and_params = load_models_and_params(
+            num_models,
+            use_templates,
+            num_recycles,
+            num_ensemble,
+            model_order,
+            model_extension,
+            data_dir,
+            recompile_all_models,
+            stop_at_score=stop_at_score,
+            rank_by=rank_by,
+            return_representations=save_representations,
+            training=training,
+            max_msa=max_msa,
+        )
     if custom_template_path is not None:
         mk_hhsearch_db(custom_template_path)
 
@@ -1734,7 +1734,8 @@ def main():
             f"--max-msa can not be used in combination with AlphaFold2-multimer (--max-msa ignored)"
         )
         args.max_msa = None
-    download_alphafold_params(model_type, data_dir)
+    if not args.msa_only:
+        download_alphafold_params(model_type, data_dir)
     uses_api = any((query[2] is None for query in queries))
     if uses_api and args.host_url == DEFAULT_API_SERVER:
         print(ACCEPT_DEFAULT_TERMS, file=sys.stderr)
