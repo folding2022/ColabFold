@@ -41,6 +41,7 @@ def mmseqs_search_monomer(
     s: float = 8,
     db_load_mode: int = 2,
     threads: int = 32,
+    spaced_kmer_mode: int = 1,
 ):
     """Run mmseqs with a local colabfold database set
 
@@ -78,7 +79,7 @@ def mmseqs_search_monomer(
 
     # fmt: off
     # @formatter:off
-    search_param = ["--num-iterations", "3", "--db-load-mode", str(db_load_mode), "-a", "-s", str(s), "-e", "0.1", "--max-seqs", "10000",]
+    search_param = ["--num-iterations", "3", "--db-load-mode", str(db_load_mode), "-a", "-s", str(s), "-e", "0.1", "--max-seqs", "10000","--spaced-kmer-mode", str(spaced_kmer_mode),]
     filter_param = ["--filter-msa", str(filter), "--filter-min-enable", "1000", "--diff", str(diff), "--qid", "0.0,0.2,0.4,0.6,0.8,1.0", "--qsc", "0", "--max-seq-id", "0.95",]
     expand_param = ["--expansion-mode", "0", "-e", str(expand_eval), "--expand-filter-clusters", str(filter), "--max-seq-id", "0.95",]
 
@@ -100,7 +101,7 @@ def mmseqs_search_monomer(
     subprocess.run([mmseqs] + ["rmdb", base.joinpath("res_exp_realign_filter")])
 
     if use_templates:
-        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(template_db), base.joinpath("res_pdb"), base.joinpath("tmp"), "--db-load-mode", str(db_load_mode), "--threads", str(threads), "-s", "7.5", "-a", "-e", "0.1"])
+        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(template_db), base.joinpath("res_pdb"), base.joinpath("tmp"), "--db-load-mode", str(db_load_mode), "--threads", str(threads), "-s", "7.5", "-a", "-e", "0.1", "--spaced-kmer-mode", str(spaced_kmer_mode)])
         run_mmseqs(mmseqs, ["convertalis", base.joinpath("prof_res"), dbbase.joinpath(f"{template_db}{dbSuffix1}"), base.joinpath("res_pdb"), base.joinpath(f"{template_db}.m8"), "--format-output", "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,cigar", "--db-load-mode", str(db_load_mode), "--threads", str(threads)])
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("res_pdb")])
     if use_env:
@@ -152,6 +153,7 @@ def mmseqs_search_pair(
     s: float = 8,
     threads: int = 64,
     db_load_mode: int = 2,
+    spaced_kmer_mode: int = 1,
 ):
     if not dbbase.joinpath(f"{uniref_db}.dbtype").is_file():
         raise FileNotFoundError(f"Database {uniref_db} does not exist")
@@ -179,6 +181,8 @@ def mmseqs_search_pair(
         "0.1",
         "--max-seqs",
         "10000",
+        "--spaced-kmer-mode",
+        str(spaced_kmer_mode),
     ]
     expand_param = [
         "--expansion-mode",
@@ -375,6 +379,7 @@ def main():
     parser.add_argument("--max-accept", type=int, default=1000000)
     parser.add_argument("--db-load-mode", type=int, default=0)
     parser.add_argument("--threads", type=int, default=64)
+    parser.add_argument("--spaced-kmer-mode", type=int, default=1)
     args = parser.parse_args()
 
     queries, is_complex = get_queries(args.query, None)
@@ -442,6 +447,7 @@ def main():
         s=args.s,
         db_load_mode=args.db_load_mode,
         threads=args.threads,
+        spaced_kmer_mode=spaced_kmer_mode,
     )
     if is_complex == True:
         mmseqs_search_pair(
@@ -452,6 +458,7 @@ def main():
             s=args.s,
             db_load_mode=args.db_load_mode,
             threads=args.threads,
+            spaced_kmer_mode=spaced_kmer_mode,
         )
 
         id = 0
