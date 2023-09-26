@@ -447,7 +447,7 @@ def main():
         s=args.s,
         db_load_mode=args.db_load_mode,
         threads=args.threads,
-        spaced_kmer_mode=spaced_kmer_mode,
+        spaced_kmer_mode=args.spaced_kmer_mode,
     )
     if is_complex == True:
         mmseqs_search_pair(
@@ -458,7 +458,7 @@ def main():
             s=args.s,
             db_load_mode=args.db_load_mode,
             threads=args.threads,
-            spaced_kmer_mode=spaced_kmer_mode,
+            spaced_kmer_mode=args.spaced_kmer_mode,
         )
 
         id = 0
