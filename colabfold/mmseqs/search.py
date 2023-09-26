@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def run_mmseqs(mmseqs: Path, params: List[Union[str, Path]]):
     params_log = " ".join(str(i) for i in params)
     logger.info(f"Running {mmseqs} {params_log}")
-    subprocess.check_call(["srun", "-N", "1", "-n", "1", "--exclusive", mmseqs] + params)
+    subprocess.check_call(["srun", "-N", "1", "-n", "1", "-c", "128", "--exclusive", mmseqs] + params)
 
 
 def mmseqs_search_monomer(
