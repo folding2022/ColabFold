@@ -17,10 +17,13 @@ from colabfold.batch import get_queries, msa_to_str
 logger = logging.getLogger(__name__)
 
 
-def run_mmseqs(mmseqs: Path, params: List[Union[str, Path]]):
+def run_mmseqs(mmseqs: Path, params: List[Union[str, Path]], parallel=False):
     params_log = " ".join(str(i) for i in params)
     logger.info(f"Running {mmseqs} {params_log}")
-    subprocess.check_call(["srun", "-N", "1", "-n", "1", "-c", "128", "--exclusive", mmseqs] + params)
+    if parallel:
+        subprocess.check_call(["srun", "-N", "1", "-n", "1", "-c", "128", "--exclusive", mmseqs] + params)
+    else:
+        subprocess.check_call([mmseqs] + params)
 
 
 def mmseqs_search_monomer(
@@ -83,43 +86,43 @@ def mmseqs_search_monomer(
     filter_param = ["--filter-msa", str(filter), "--filter-min-enable", "1000", "--diff", str(diff), "--qid", "0.0,0.2,0.4,0.6,0.8,1.0", "--qsc", "0", "--max-seq-id", "0.95",]
     expand_param = ["--expansion-mode", "0", "-e", str(expand_eval), "--expand-filter-clusters", str(filter), "--max-seq-id", "0.95",]
 
-    run_mmseqs(mmseqs, ["search", base.joinpath("qdb"), dbbase.joinpath(uniref_db), base.joinpath("res"), base.joinpath("tmp"), "--threads", str(threads)] + search_param)
+    run_mmseqs(mmseqs, ["search", base.joinpath("qdb"), dbbase.joinpath(uniref_db), base.joinpath("res"), base.joinpath("tmp"), "--threads", str(threads)] + search_param, True)
     run_mmseqs(mmseqs, ["mvdb", base.joinpath("tmp/latest/profile_1"), base.joinpath("prof_res")])
     run_mmseqs(mmseqs, ["lndb", base.joinpath("qdb_h"), base.joinpath("prof_res_h")])
-    run_mmseqs(mmseqs, ["expandaln", base.joinpath("qdb"), dbbase.joinpath(f"{uniref_db}{dbSuffix1}"), base.joinpath("res"), dbbase.joinpath(f"{uniref_db}{dbSuffix2}"), base.joinpath("res_exp"), "--db-load-mode", str(db_load_mode), "--threads", str(threads)] + expand_param)
-    run_mmseqs(mmseqs, ["align", base.joinpath("prof_res"), dbbase.joinpath(f"{uniref_db}{dbSuffix1}"), base.joinpath("res_exp"), base.joinpath("res_exp_realign"), "--db-load-mode", str(db_load_mode), "-e", str(align_eval), "--max-accept", str(max_accept), "--threads", str(threads), "--alt-ali", "10", "-a"])
+    run_mmseqs(mmseqs, ["expandaln", base.joinpath("qdb"), dbbase.joinpath(f"{uniref_db}{dbSuffix1}"), base.joinpath("res"), dbbase.joinpath(f"{uniref_db}{dbSuffix2}"), base.joinpath("res_exp"), "--db-load-mode", str(db_load_mode), "--threads", str(threads)] + expand_param, True)
+    run_mmseqs(mmseqs, ["align", base.joinpath("prof_res"), dbbase.joinpath(f"{uniref_db}{dbSuffix1}"), base.joinpath("res_exp"), base.joinpath("res_exp_realign"), "--db-load-mode", str(db_load_mode), "-e", str(align_eval), "--max-accept", str(max_accept), "--threads", str(threads), "--alt-ali", "10", "-a"], True)
     run_mmseqs(mmseqs, ["filterresult", base.joinpath("qdb"), dbbase.joinpath(f"{uniref_db}{dbSuffix1}"),
                         base.joinpath("res_exp_realign"), base.joinpath("res_exp_realign_filter"), "--db-load-mode",
                         str(db_load_mode), "--qid", "0", "--qsc", str(qsc), "--diff", "0", "--threads",
-                        str(threads), "--max-seq-id", "1.0", "--filter-min-enable", "100"])
+                        str(threads), "--max-seq-id", "1.0", "--filter-min-enable", "100"], True)
     run_mmseqs(mmseqs, ["result2msa", base.joinpath("qdb"), dbbase.joinpath(f"{uniref_db}{dbSuffix1}"),
                         base.joinpath("res_exp_realign_filter"), base.joinpath("uniref.a3m"), "--msa-format-mode",
-                        "6", "--db-load-mode", str(db_load_mode), "--threads", str(threads)] + filter_param)
+                        "6", "--db-load-mode", str(db_load_mode), "--threads", str(threads)] + filter_param, True)
     subprocess.run([mmseqs] + ["rmdb", base.joinpath("res_exp_realign")])
     subprocess.run([mmseqs] + ["rmdb", base.joinpath("res_exp")])
     subprocess.run([mmseqs] + ["rmdb", base.joinpath("res")])
     subprocess.run([mmseqs] + ["rmdb", base.joinpath("res_exp_realign_filter")])
 
     if use_templates:
-        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(template_db), base.joinpath("res_pdb"), base.joinpath("tmp"), "--db-load-mode", str(db_load_mode), "--threads", str(threads), "-s", "7.5", "-a", "-e", "0.1", "--spaced-kmer-mode", str(spaced_kmer_mode)])
-        run_mmseqs(mmseqs, ["convertalis", base.joinpath("prof_res"), dbbase.joinpath(f"{template_db}{dbSuffix1}"), base.joinpath("res_pdb"), base.joinpath(f"{template_db}.m8"), "--format-output", "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,cigar", "--db-load-mode", str(db_load_mode), "--threads", str(threads)])
+        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(template_db), base.joinpath("res_pdb"), base.joinpath("tmp"), "--db-load-mode", str(db_load_mode), "--threads", str(threads), "-s", "7.5", "-a", "-e", "0.1", "--spaced-kmer-mode", str(spaced_kmer_mode)], True)
+        run_mmseqs(mmseqs, ["convertalis", base.joinpath("prof_res"), dbbase.joinpath(f"{template_db}{dbSuffix1}"), base.joinpath("res_pdb"), base.joinpath(f"{template_db}.m8"), "--format-output", "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits,cigar", "--db-load-mode", str(db_load_mode), "--threads", str(threads)], True)
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("res_pdb")])
     if use_env:
-        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(metagenomic_db), base.joinpath("res_env"), base.joinpath("tmp"), "--threads", str(threads)] + search_param)
-        run_mmseqs(mmseqs, ["expandaln", base.joinpath("prof_res"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix1}"), base.joinpath("res_env"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix2}"), base.joinpath("res_env_exp"), "-e", str(expand_eval), "--expansion-mode", "0", "--db-load-mode", str(db_load_mode), "--threads", str(threads)])
+        run_mmseqs(mmseqs, ["search", base.joinpath("prof_res"), dbbase.joinpath(metagenomic_db), base.joinpath("res_env"), base.joinpath("tmp"), "--threads", str(threads)] + search_param, True)
+        run_mmseqs(mmseqs, ["expandaln", base.joinpath("prof_res"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix1}"), base.joinpath("res_env"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix2}"), base.joinpath("res_env_exp"), "-e", str(expand_eval), "--expansion-mode", "0", "--db-load-mode", str(db_load_mode), "--threads", str(threads)], True)
         run_mmseqs(mmseqs,
                    ["align", base.joinpath("tmp/latest/profile_1"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix1}"),
                     base.joinpath("res_env_exp"), base.joinpath("res_env_exp_realign"), "--db-load-mode",
                     str(db_load_mode), "-e", str(align_eval), "--max-accept", str(max_accept), "--threads",
-                    str(threads), "--alt-ali", "10", "-a"])
+                    str(threads), "--alt-ali", "10", "-a"], True)
         run_mmseqs(mmseqs, ["filterresult", base.joinpath("qdb"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix1}"),
                             base.joinpath("res_env_exp_realign"), base.joinpath("res_env_exp_realign_filter"),
                             "--db-load-mode", str(db_load_mode), "--qid", "0", "--qsc", str(qsc), "--diff", "0",
-                            "--max-seq-id", "1.0", "--threads", str(threads), "--filter-min-enable", "100"])
+                            "--max-seq-id", "1.0", "--threads", str(threads), "--filter-min-enable", "100"], True)
         run_mmseqs(mmseqs, ["result2msa", base.joinpath("qdb"), dbbase.joinpath(f"{metagenomic_db}{dbSuffix1}"),
                             base.joinpath("res_env_exp_realign_filter"),
                             base.joinpath("bfd.mgnify30.metaeuk30.smag30.a3m"), "--msa-format-mode", "6",
-                            "--db-load-mode", str(db_load_mode), "--threads", str(threads)] + filter_param)
+                            "--db-load-mode", str(db_load_mode), "--threads", str(threads)] + filter_param, True)
 
 
         run_mmseqs(mmseqs, ["rmdb", base.joinpath("res_env_exp_realign_filter")])
@@ -205,7 +208,7 @@ def mmseqs_search_pair(
             "--threads",
             str(threads),
         ]
-        + search_param,
+        + search_param, True,
     )
     run_mmseqs(
         mmseqs,
@@ -221,7 +224,7 @@ def mmseqs_search_pair(
             "--threads",
             str(threads),
         ]
-        + expand_param,
+        + expand_param, True
     )
     run_mmseqs(
         mmseqs,
@@ -243,7 +246,7 @@ def mmseqs_search_pair(
             "0.5",
             "--cov-mode",
             "1",
-        ],
+        ], True,
     )
     run_mmseqs(
         mmseqs,
@@ -257,7 +260,7 @@ def mmseqs_search_pair(
             str(db_load_mode),
             "--threads",
             str(threads),
-        ],
+        ], True,
     )
     run_mmseqs(
         mmseqs,
@@ -273,7 +276,7 @@ def mmseqs_search_pair(
             "inf",
             "--threads",
             str(threads),
-        ],
+        ], True,
     )
     run_mmseqs(
         mmseqs,
@@ -287,7 +290,7 @@ def mmseqs_search_pair(
             str(db_load_mode),
             "--threads",
             str(threads),
-        ],
+        ], True,
     )
     run_mmseqs(
         mmseqs,
@@ -303,7 +306,7 @@ def mmseqs_search_pair(
             "5",
             "--threads",
             str(threads),
-        ],
+        ], True,
     )
     run_mmseqs(
         mmseqs,
